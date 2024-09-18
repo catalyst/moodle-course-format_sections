@@ -63,4 +63,4 @@ $widget = new $outputclass($format);
 echo $renderer->render($widget);
 
 // Include course format js module.
-$PAGE->requires->js('/course/format/sections/format.js');
+$PAGE->requires->js_call_amd('format_sections/format', 'init');
