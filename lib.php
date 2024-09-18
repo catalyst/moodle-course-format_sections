@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This file contains main class for Sectionss course format.
+ * This file contains main class for Sections course format.
  *
  * @since     Moodle 2.0
  * @package   format_sections
@@ -51,7 +51,7 @@ class format_sections extends core_courseformat\base {
     }
 
     public function uses_indentation(): bool {
-        return true;
+        return (get_config('format_sections', 'indentation')) ? true : false;
     }
 
     /**
@@ -76,21 +76,18 @@ class format_sections extends core_courseformat\base {
      * Returns the default section name for the sections course format.
      *
      * If the section number is 0, it will use the string with key = section0name from the course format's lang file.
-     * If the section number is not 0, the base implementation of course_format::get_default_section_name which uses
-     * the string with the key = 'sectionname' from the course format's lang file + the section number will be used.
+     * If the section number is not 0, it will consistently return the name 'newsection', disregarding the specific section number.
      *
-     * @param stdClass $section Section object from database or just field course_sections section
+     * @param int|stdClass $section Section object from database or just field course_sections section
      * @return string The default value for the section name.
      */
     public function get_default_section_name($section) {
-        if ($section->section == 0) {
-            // Return the general section.
+        $section = $this->get_section($section);
+        if ($section->sectionnum == 0) {
             return get_string('section0name', 'format_sections');
-        } else {
-            // Use course_format::get_default_section_name implementation which
-            // will display the section name in "Topic n" format.
-            return parent::get_default_section_name($section);
         }
+
+        return get_string('newsection', 'format_sections');
     }
 
     /**
@@ -99,7 +96,7 @@ class format_sections extends core_courseformat\base {
      * @return string the page title
      */
     public function page_title(): string {
-        return get_string('topicoutline');
+        return get_string('sectionoutline');
     }
 
     /**
@@ -108,45 +105,26 @@ class format_sections extends core_courseformat\base {
      * @param int|stdClass $section Section object from database or just field course_sections.section
      *     if omitted the course view page is returned
      * @param array $options options for view URL. At the moment core uses:
-     *     'navigation' (bool) if true and section has no separate page, the function returns null
-     *     'sr' (int) used by multipage formats to specify to which section to return
+     *     'navigation' (bool) if true and section not empty, the function returns section page; otherwise, it returns course page.
+     *     'sr' (int) used by course formats to specify to which section to return
      * @return null|moodle_url
      */
     public function get_view_url($section, $options = []) {
-        global $CFG;
         $course = $this->get_course();
-        $url = new moodle_url('/course/view.php', ['id' => $course->id]);
-
-        $sr = null;
-        if (array_key_exists('sr', $options)) {
-            $sr = $options['sr'];
-        }
-        if (is_object($section)) {
+        if (array_key_exists('sr', $options) && !is_null($options['sr'])) {
+            $sectionno = $options['sr'];
+        } else if (is_object($section)) {
             $sectionno = $section->section;
         } else {
             $sectionno = $section;
         }
-        if ($sectionno !== null) {
-            if ($sr !== null) {
-                if ($sr) {
-                    $usercoursedisplay = COURSE_DISPLAY_MULTIPAGE;
-                    $sectionno = $sr;
-                } else {
-                    $usercoursedisplay = COURSE_DISPLAY_SINGLEPAGE;
-                }
-            } else {
-                $usercoursedisplay = $course->coursedisplay ?? COURSE_DISPLAY_SINGLEPAGE;
-            }
-            if ($sectionno != 0 && $usercoursedisplay == COURSE_DISPLAY_MULTIPAGE) {
-                $url->param('section', $sectionno);
-            } else {
-                if (empty($CFG->linkcoursesections) && !empty($options['navigation'])) {
-                    return null;
-                }
-                $url->set_anchor('section-'.$sectionno);
-            }
+        if ((!empty($options['navigation']) || array_key_exists('sr', $options)) && $sectionno !== null) {
+            // Display section on separate page.
+            $sectioninfo = $this->get_section($sectionno);
+            return new moodle_url('/course/section.php', ['id' => $sectioninfo->id]);
         }
-        return $url;
+
+        return new moodle_url('/course/view.php', ['id' => $course->id]);
     }
 
     /**
@@ -242,9 +220,6 @@ class format_sections extends core_courseformat\base {
      * Sections format uses the following options:
      * - coursedisplay
      * - hiddensections
-     * - section0display
-     * - shownews
-     * - usercoursedisplaypref
      *
      * @param bool $foreditform
      * @return array of options
@@ -261,18 +236,6 @@ class format_sections extends core_courseformat\base {
                 'coursedisplay' => [
                     'default' => $courseconfig->coursedisplay,
                     'type' => PARAM_INT,
-                ],
-                'section0display' => [
-                    'default' => 0,
-                    'type' => PARAM_BOOL,
-                ],
-                'shownews' => [
-                    'default' => 0,
-                    'type' => PARAM_BOOL,
-                ],
-                'usercoursedisplaypref' => [
-                    'default' => 0,
-                    'type' => PARAM_BOOL,
                 ],
             ];
         }
@@ -301,24 +264,6 @@ class format_sections extends core_courseformat\base {
                     ],
                     'help' => 'coursedisplay',
                     'help_component' => 'moodle',
-                ],
-                'section0display' => [
-                    'label' => new lang_string('section0display', 'format_sections'),
-                    'help' => 'section0display',
-                    'help_component' => 'format_sections',
-                    'element_type' => 'advcheckbox',
-                ],
-                'shownews' => [
-                    'label' => new lang_string('shownews', 'format_sections'),
-                    'help' => 'shownews',
-                    'help_component' => 'format_sections',
-                    'element_type' => 'advcheckbox',
-                ],
-                'usercoursedisplaypref' => [
-                    'label' => new lang_string('usercoursedisplaypref', 'format_sections'),
-                    'help' => 'usercoursedisplaypref',
-                    'help_component' => 'format_sections',
-                    'element_type' => 'advcheckbox',
                 ],
             ];
             $courseformatoptions = array_merge_recursive($courseformatoptions, $courseformatoptionsedit);
@@ -354,16 +299,13 @@ class format_sections extends core_courseformat\base {
             array_unshift($elements, $element);
         }
 
-        // Disable section0display setting if layout is 'Show all sections on one page'.
-        $mform->disabledIf('section0display', 'coursedisplay', 'neq', COURSE_DISPLAY_MULTIPAGE);
-
         return $elements;
     }
 
     /**
      * Updates format options for a course.
      *
-     * In case if course format was changed to 'Sections', we try to copy options
+     * In case if course format was changed to 'sections', we try to copy options
      * 'coursedisplay' and 'hiddensections' from the previous format.
      *
      * @param stdClass|array $data return value from {@link moodleform::get_data()} or array with data
@@ -397,28 +339,6 @@ class format_sections extends core_courseformat\base {
      */
     public function can_delete_section($section) {
         return true;
-    }
-
-    /**
-     * Prepares the templateable object to display section name.
-     *
-     * @param \section_info|\stdClass $section
-     * @param bool $linkifneeded
-     * @param bool $editable
-     * @param null|lang_string|string $edithint
-     * @param null|lang_string|string $editlabel
-     * @return inplace_editable
-     */
-    public function inplace_editable_render_section_name($section, $linkifneeded = true,
-            $editable = null, $edithint = null, $editlabel = null) {
-        if (empty($edithint)) {
-            $edithint = new lang_string('editsectionname', 'format_sections');
-        }
-        if (empty($editlabel)) {
-            $title = get_section_name($section->course, $section);
-            $editlabel = new lang_string('newsectionname', 'format_sections', $title);
-        }
-        return parent::inplace_editable_render_section_name($section, $linkifneeded, $editable, $edithint, $editlabel);
     }
 
     /**
@@ -489,87 +409,18 @@ class format_sections extends core_courseformat\base {
      */
     public function get_config_for_external() {
         // Return everything (nothing to hide).
-        return $this->get_format_options();
+        $formatoptions = $this->get_format_options();
+        $formatoptions['indentation'] = get_config('format_sections', 'indentation');
+        return $formatoptions;
     }
 
     /**
-     * Returns the format options stored for this course or course section
+     * Get the required javascript files for the course format.
      *
-     * When overriding please note that this function is called from rebuild_course_cache()
-     * and section_info object, therefore using of get_fast_modinfo() and/or any function that
-     * accesses it may lead to recursion.
-     *
-     * @param null|int|stdClass|section_info $section if null the course format options will be returned
-     *     otherwise options for specified section will be returned. This can be either
-     *     section object or relative section number (field course_sections.section)
-     * @return array
+     * @return array The list of javascript files required by the course format.
      */
-    public function get_format_options($section = null) {
-        global $DB;
-        $result = parent::get_format_options($section);
-
-        if ($section === null) {
-            $options = $this->course_format_options();
-        } else {
-            $options = $this->section_format_options();
-        }
-        if (empty($options)) {
-            // There are no option for course/sections anyway, no need to go further.
-            return array();
-        }
-        if ($section === null) {
-            // Course format options will be returned.
-            $sectionid = 0;
-        } else if ($this->courseid && isset($section->id)) {
-            // Course section format options will be returned.
-            $sectionid = $section->id;
-        } else if ($this->courseid && is_int($section) &&
-                ($sectionobj = $DB->get_record('course_sections',
-                        array('section' => $section, 'course' => $this->courseid), 'id'))) {
-            // Course section format options will be returned.
-            $sectionid = $sectionobj->id;
-        } else {
-            // Non-existing (yet) section was passed as an argument
-            // default format options for course section will be returned.
-            $sectionid = -1;
-        }
-        if (!array_key_exists($sectionid, $this->formatoptions)) {
-            $this->formatoptions[$sectionid] = array();
-            // First fill with default values.
-            foreach ($options as $optionname => $optionparams) {
-                $this->formatoptions[$sectionid][$optionname] = null;
-                if (array_key_exists('default', $optionparams)) {
-                    $this->formatoptions[$sectionid][$optionname] = $optionparams['default'];
-                }
-            }
-            if ($this->courseid && $sectionid !== -1) {
-                // Overwrite the default options values with those stored in course_format_options table
-                // nothing can be stored if we are interested in generic course ($this->courseid == 0)
-                // or generic section ($sectionid === 0).
-                $records = $DB->get_records('course_format_options',
-                        array('courseid' => $this->courseid,
-                              'format' => $this->format,
-                              'sectionid' => $sectionid
-                            ), '', 'id,name,value');
-                $indexedrecords = [];
-                foreach ($records as $record) {
-                    $indexedrecords[$record->name] = $record->value;
-                }
-                foreach ($options as $optionname => $option) {
-                    contract_value($this->formatoptions[$sectionid], $indexedrecords, $option, $optionname);
-                }
-            }
-        }
-
-        // Set coursedisplay to user preference if it exists.
-        if ($this->formatoptions[$sectionid]['usercoursedisplaypref']) {
-            $userpref = get_user_preferences('format_sections_coursedisplaypref');
-            if (!is_null($userpref)) {
-                $this->formatoptions[$sectionid]['coursedisplay'] = $userpref;
-            }
-        }
-
-        return $this->formatoptions[$sectionid];
+    public function get_required_jsfiles(): array {
+        return [];
     }
 }
 
