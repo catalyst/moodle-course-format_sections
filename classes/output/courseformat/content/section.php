@@ -41,13 +41,27 @@ class section extends section_base {
     protected $format;
 
     public function export_for_template(\renderer_base $output): stdClass {
+        global $PAGE;
+
         $format = $this->format;
+        $course = $format->get_course();
+        $options = $format->get_format_options();
 
         $data = parent::export_for_template($output);
 
         if (!$this->format->get_sectionnum()) {
             $addsectionclass = $format->get_output_classname('content\\addsection');
             $addsection = new $addsectionclass($format);
+            $renderer = $PAGE->get_renderer('format_sections');
+            if ($data->num === 0) {
+                if ($options['shownews']) {
+                    $data->newsforum = $renderer->display_forum($course);
+                }
+                if ($options['usercoursedisplaypref']) {
+                    $coursedisplay = $format->get_course_display();
+                    $data->usercoursedisplaypref = $renderer->course_display_action_link($coursedisplay, $course);
+                }
+            }
             $data->numsections = $addsection->export_for_template($output);
             $data->insertafter = true;
         }

@@ -18,12 +18,12 @@
  * Version details.
  *
  * @package    format_sections
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2024 University of Canterbury
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024042200;        // The current plugin version (Date: YYYYMMDDXX).
+$plugin->version   = 2024091900;        // The current plugin version (Date: YYYYMMDDXX).
 $plugin->requires  = 2024041600;        // Requires this Moodle version.
 $plugin->component = 'format_sections';    // Full name of the plugin (used for diagnostics).

@@ -22,6 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * Upgrade script for Sections course format.
  *
@@ -29,7 +31,7 @@
  * @return bool result
  */
 function xmldb_format_sections_upgrade($oldversion) {
-    global $DB;
+    global $CFG, $DB;
 
     // Automatically generated Moodle v4.1.0 release upgrade line.
     // Put any upgrade step following this.
@@ -53,8 +55,8 @@ function xmldb_format_sections_upgrade($oldversion) {
 
     if ($oldversion < 2023100901) {
         // During the migration to version 4.4, ensure that sections with null names are renamed to their corresponding
-        // previous 'Topic X' for continuity.
-        $newsectionname = $DB->sql_concat("'Topic '", 'section');
+        // previous 'Section X' for continuity.
+        $newsectionname = $DB->sql_concat("'Section '", 'section');
         $sql = <<<EOF
                     UPDATE {course_sections}
                        SET name = $newsectionname
