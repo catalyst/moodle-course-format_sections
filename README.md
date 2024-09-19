@@ -13,6 +13,7 @@ The Moodle 4.4 branch is a rewrite of the old code - based on the core Sections 
 | ----------------- | ------------------ |
 | Moodle 3.9        | `MOODLE_39`        |
 | Moodle 4.0        | `MOODLE_400`       |
-| Moodle 4.4+       | `MOODLE_404`       |
+| Moodle 4.4        | `MOODLE_404`       |
+| Moodle 4.5        | `MOODLE_405`       |
 
 Developed by the University of Canterbury.
