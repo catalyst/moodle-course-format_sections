@@ -49,7 +49,7 @@ class section extends section_base {
 
         $data = parent::export_for_template($output);
 
-        if (!$this->format->get_section_number()) {
+        if (!$this->format->get_sectionnum()) {
             $addsectionclass = $format->get_output_classname('content\\addsection');
             $addsection = new $addsectionclass($format);
             $renderer = $PAGE->get_renderer('format_sections');

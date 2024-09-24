@@ -15,15 +15,22 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version details.
+ * Settings for format_sections
  *
  * @package    format_sections
- * @copyright  2024 University of Canterbury
+ * @copyright  2020 Amaia Anabitarte <amaia@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+defined('MOODLE_INTERNAL') || die;
 
-$plugin->version   = 2024091900;        // The current plugin version (Date: YYYYMMDDXX).
-$plugin->requires  = 2024041600;        // Requires this Moodle version.
-$plugin->component = 'format_sections';    // Full name of the plugin (used for diagnostics).
+if ($ADMIN->fulltree) {
+    $url = new moodle_url('/admin/course/resetindentation.php', ['format' => 'sections']);
+    $link = html_writer::link($url, get_string('resetindentation', 'admin'));
+    $settings->add(new admin_setting_configcheckbox(
+        'format_sections/indentation',
+        new lang_string('indentation', 'format_sections'),
+        new lang_string('indentation_help', 'format_sections').'<br />'.$link,
+        1
+    ));
+}
