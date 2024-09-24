@@ -33,10 +33,45 @@ defined('MOODLE_INTERNAL') || die();
 function xmldb_format_sections_upgrade($oldversion) {
     global $CFG, $DB;
 
-    // Automatically generated Moodle v3.9.0 release upgrade line.
+    // Automatically generated Moodle v4.1.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Automatically generated Moodle v4.0.0 release upgrade line.
+    if ($oldversion < 2023030700) {
+        // For sites migrating from 4.0.x or 4.1.x where the indentation was removed,
+        // we are disabling 'indentation' value by default.
+        if ($oldversion >= 2022041900) {
+            set_config('indentation', 0, 'format_sections');
+        } else {
+            set_config('indentation', 1, 'format_sections');
+        }
+        upgrade_plugin_savepoint(true, 2023030700, 'format', 'sections');
+    }
+
+    // Automatically generated Moodle v4.2.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v4.3.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2023100901) {
+        // During the migration to version 4.4, ensure that sections with null names are renamed to their corresponding
+        // previous 'Section X' for continuity.
+        $newsectionname = $DB->sql_concat("'Section '", 'section');
+        $sql = <<<EOF
+                    UPDATE {course_sections}
+                       SET name = $newsectionname
+                     WHERE section > 0 AND (name IS NULL OR name = '')
+                           AND course IN (SELECT id FROM {course} WHERE format = 'sections')
+        EOF;
+        $DB->execute(
+            sql: $sql,
+        );
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2023100901, 'format', 'sections');
+    }
+
+    // Automatically generated Moodle v4.4.0 release upgrade line.
     // Put any upgrade step following this.
 
     return true;

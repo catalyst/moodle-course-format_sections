@@ -65,7 +65,7 @@ class content extends content_base {
         // Most formats uses section 0 as a separate section so we remove from the list.
         $sections = $this->export_sections($output);
         $initialsection = '';
-        $singlesection = $this->format->get_section_number();
+        $singlesection = $this->format->get_sectionnum();
         $options = $format->get_format_options();
 
         if (!empty($sections)) {
@@ -83,6 +83,10 @@ class content extends content_base {
             'format' => $format->get_format(),
             'sectionreturn' => 0,
         ];
+
+        $PAGE->requires->js_call_amd('format_sections/mutations', 'init');
+        $PAGE->requires->js_call_amd('format_sections/section', 'init');
+        $data = parent::export_for_template($output);
 
         // The single section format has extra navigation.
         if ($singlesection) {
@@ -105,6 +109,5 @@ class content extends content_base {
 
         return $data;
     }
-
 
 }
