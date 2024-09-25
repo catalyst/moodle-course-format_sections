@@ -36,11 +36,11 @@ use core_courseformat\output\local\content as content_base;
 class content extends content_base {
 
     /**
-     * @var bool Sections format has add section after each section.
+     * @var bool Sections format has Add section at the bottom after existing sections.
      *
-     * The responsible for the buttons is core_courseformat\output\local\content\section.
+     * The responsible for the button is core_courseformat\output\local\content\section.
      */
-    protected $hasaddsection = false;
+    protected $hasaddsection = true;
 
     /**
      * Template name for this exporter
