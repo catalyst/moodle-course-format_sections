@@ -84,10 +84,6 @@ class content extends content_base {
             'sectionreturn' => 0,
         ];
 
-        $PAGE->requires->js_call_amd('format_sections/mutations', 'init');
-        $PAGE->requires->js_call_amd('format_sections/section', 'init');
-        $data = parent::export_for_template($output);
-
         // The single section format has extra navigation.
         if ($singlesection) {
             if (!$PAGE->theme->usescourseindex) {
@@ -106,6 +102,10 @@ class content extends content_base {
             $addsection = new $this->addsectionclass($format);
             $data->numsections = $addsection->export_for_template($output);
         }
+
+        $PAGE->requires->js_call_amd('format_sections/mutations', 'init');
+        $PAGE->requires->js_call_amd('format_sections/section', 'init');
+        $data = parent::export_for_template($output);
 
         return $data;
     }
