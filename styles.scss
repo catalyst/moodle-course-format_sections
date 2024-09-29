@@ -17,3 +17,12 @@
         }
     }
 }
+
+// Single section page.
+.format-sections.single-section-page {
+    // Remove border.
+    .course-section .section-item {
+       padding: 0;
+       border: none;
+    }
+}
