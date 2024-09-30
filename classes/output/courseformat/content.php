@@ -64,6 +64,7 @@ class content extends content_base {
         $format = $this->format;
 
         $sections = $this->export_sections($output);
+        $options = $format->get_format_options();
         $initialsection = '';
 
         $data = (object)[
@@ -80,7 +81,7 @@ class content extends content_base {
             if (!$PAGE->theme->usescourseindex) {
                 $sectionnavigation = new $this->sectionnavigationclass($format, $singlesectionnum);
                 $data->sectionnavigation = $sectionnavigation->export_for_template($output);
-                
+
                 $sectionselector = new $this->sectionselectorclass($format, $sectionnavigation);
                 $data->sectionselector = $sectionselector->export_for_template($output);
             }
@@ -89,14 +90,16 @@ class content extends content_base {
             $data->sectionreturn = $singlesectionnum;
         }
 
-        if ($this->hasaddsection) {
-            $addsection = new $this->addsectionclass($format);
-            $data->numsections = $addsection->export_for_template($output);
-        }
-
         $PAGE->requires->js_call_amd('format_sections/mutations', 'init');
         $PAGE->requires->js_call_amd('format_sections/section', 'init');
         $data = parent::export_for_template($output);
+
+        // Course layout 'Show one section per page' is selected.
+        if(!empty($options['coursedisplay'])) {
+            $data->sections = array_shift($data->sections);
+            $data->hasaddsection = false;
+            $data->numsections = [];
+        }
 
         return $data;
     }
@@ -104,7 +107,7 @@ class content extends content_base {
     /**
      * Export sections array data.
      *
-     * @param renderer_base $output typically, the renderer that's calling this function
+     * @param \renderer_base $output typically, the renderer that's calling this function
      * @return array data context for a mustache template
      */
     protected function export_sections(\renderer_base $output): array {
