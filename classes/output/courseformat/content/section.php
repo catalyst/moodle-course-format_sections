@@ -46,6 +46,7 @@ class section extends section_base {
         $format = $this->format;
         $course = $format->get_course();
         $options = $format->get_format_options();
+        $singlesectionid = $format->get_sectionid();
 
         $data = parent::export_for_template($output);
 
@@ -57,7 +58,7 @@ class section extends section_base {
                 if ($options['shownews']) {
                     $data->newsforum = $renderer->display_forum($course);
                 }
-                if ($options['usercoursedisplaypref']) {
+                if ($options['usercoursedisplaypref'] && is_null($singlesectionid)) {
                     $coursedisplay = $format->get_course_display();
                     $data->usercoursedisplaypref = $renderer->course_display_action_link($coursedisplay, $course);
                 }

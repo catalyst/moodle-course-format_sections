@@ -25,6 +25,7 @@
 namespace format_sections\output\courseformat;
 
 use core_courseformat\output\local\content as content_base;
+use course_modinfo;
 
 /**
  * Base class to render a course content.
@@ -36,11 +37,11 @@ use core_courseformat\output\local\content as content_base;
 class content extends content_base {
 
     /**
-     * @var bool Sections format has add section after each section.
+     * @var bool Sections format has Add section at the bottom after existing sections.
      *
-     * The responsible for the buttons is core_courseformat\output\local\content\section.
+     * The responsible for the button is core_courseformat\output\local\content\section.
      */
-    protected $hasaddsection = false;
+    protected $hasaddsection = true;
 
     /**
      * Template name for this exporter
@@ -62,19 +63,9 @@ class content extends content_base {
         global $PAGE;
         $format = $this->format;
 
-        // Most formats uses section 0 as a separate section so we remove from the list.
         $sections = $this->export_sections($output);
-        $initialsection = '';
-        $singlesection = $this->format->get_sectionnum();
         $options = $format->get_format_options();
-
-        if (!empty($sections)) {
-            if ($singlesection && $options['section0display']) {
-                // Remove section 0 on individual section pages.
-                array_shift($sections);
-            }
-            $initialsection = array_shift($sections);
-        }
+        $initialsection = '';
 
         $data = (object)[
             'title' => $format->page_title(), // This method should be in the course_format class.
@@ -84,14 +75,11 @@ class content extends content_base {
             'sectionreturn' => 0,
         ];
 
-        $PAGE->requires->js_call_amd('format_sections/mutations', 'init');
-        $PAGE->requires->js_call_amd('format_sections/section', 'init');
-        $data = parent::export_for_template($output);
-
         // The single section format has extra navigation.
-        if ($singlesection) {
+        if ($this->format->get_sectionid()) {
+            $singlesectionnum = $this->format->get_sectionnum();
             if (!$PAGE->theme->usescourseindex) {
-                $sectionnavigation = new $this->sectionnavigationclass($format, $singlesection);
+                $sectionnavigation = new $this->sectionnavigationclass($format, $singlesectionnum);
                 $data->sectionnavigation = $sectionnavigation->export_for_template($output);
 
                 $sectionselector = new $this->sectionselectorclass($format, $sectionnavigation);
@@ -99,15 +87,96 @@ class content extends content_base {
             }
             $data->hasnavigation = true;
             $data->singlesection = array_shift($data->sections);
-            $data->sectionreturn = $singlesection;
+            $data->sectionreturn = $singlesectionnum;
         }
 
-        if ($this->hasaddsection) {
-            $addsection = new $this->addsectionclass($format);
-            $data->numsections = $addsection->export_for_template($output);
+        $PAGE->requires->js_call_amd('format_sections/mutations', 'init');
+        $PAGE->requires->js_call_amd('format_sections/section', 'init');
+        $data = parent::export_for_template($output);
+
+        // Course layout 'Show one section per page' is selected.
+        if(!empty($options['coursedisplay'])) {
+            $data->sections = array_shift($data->sections);
+            $data->hasaddsection = false;
+            $data->numsections = [];
         }
 
         return $data;
     }
 
+    /**
+     * Export sections array data.
+     *
+     * @param \renderer_base $output typically, the renderer that's calling this function
+     * @return array data context for a mustache template
+     */
+    protected function export_sections(\renderer_base $output): array {
+
+        $format = $this->format;
+        $course = $format->get_course();
+        $modinfo = $this->format->get_modinfo();
+
+        // Generate section list.
+        $sections = [];
+        $stealthsections = [];
+        foreach ($this->get_sections_to_display($modinfo) as $sectionnum => $thissection) {
+            // The course/view.php check the section existence but the output can be called
+            // from other parts so we need to check it.
+            if (!$thissection) {
+                throw new \moodle_exception('unknowncoursesection', 'error', course_get_url($course),
+                    format_string($course->fullname));
+            }
+
+            if (!$format->is_section_visible($thissection)) {
+                continue;
+            }
+
+            /** @var \core_courseformat\output\local\content\section $section */
+            $section = new $this->sectionclass($format, $thissection);
+
+            if ($section->is_stealth()) {
+                // Activities inside this section are 'orphaned', this section will be printed as 'stealth' below.
+                if (!empty($modinfo->sections[$sectionnum])) {
+                    $stealthsections[] = $section->export_for_template($output);
+                }
+                continue;
+            }
+
+            $sections[] = $section->export_for_template($output);
+        }
+        if (!empty($stealthsections)) {
+            $sections = array_merge($sections, $stealthsections);
+        }
+        return $sections;
+    }
+
+    /**
+     * Return an array of sections to display.
+     *
+     * This method is used to differentiate between display a specific section
+     * or a list of them.
+     *
+     * @param course_modinfo $modinfo the current course modinfo object
+     * @return section_info[] an array of section_info to display
+     */
+    private function get_sections_to_display(course_modinfo $modinfo): array {
+        $singlesectionid = $this->format->get_sectionid();
+        $section0 = $this->format->get_section(0);
+        $options = $this->format->get_format_options();
+        if ($singlesectionid) {
+            if (!$options['section0display'] && $singlesectionid !== (int)$section0->id) {
+                // Display section 0 in a single section page.
+                return [
+                    $modinfo->get_section_info_by_id($singlesectionid),
+                    $modinfo->get_section_info_by_id($section0->id),
+                ];
+            }
+            // Display section 0 once in its own single section page.
+            return [
+                $modinfo->get_section_info_by_id($singlesectionid),
+            ];
+        }
+        // Display all sections.
+        return $modinfo->get_listed_section_info_all();
+    }
 }
